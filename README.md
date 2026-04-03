@@ -1,110 +1,124 @@
 # buddy-clash
 
-**Pokemon-style CLI battler for Claude Code companions. Stake GitHub repos.**
+> Pick a buddy. Learn skills. Battle your friends. **Loser shares a private repo.**
 
 ```bash
 npx buddy-clash
 ```
 
-## What is this?
+## What it looks like
 
-Turn your Claude Code companion into a battle creature. Pick a buddy, choose skills, fight bots or battle friends online. **Loser stakes a private GitHub repo.**
+```
+  ⚔  BUDDY BATTLE — Turn 3  ⚔
 
-Built in a single Claude Code session.
+  ┌─ OPPONENT ─────────────────────────────────┐
+  │ Wild Dragon Lv.5 (ELECTRIC)
+  │ HP: ██████████████████░░ 116/130
+  │         /\_
+  │        / o >
+  │       /  ^_/
+  │      <_/| |\~
+  └────────────────────────────────────────────┘
 
-## Features
+          ─── vs ───
 
-- **6 creatures** — Octopus, Fox, Owl, Dragon, Cat, Penguin — each with unique type, stats, and ASCII art
-- **20+ skills** in 3 categories:
-  - **Inject** (attack): SQL Inject, Fork Bomb, rm -rf, XSS Strike, DDoS Wave, Buffer Overflow
-  - **Defend**: Firewall, Encrypt, Sandbox, Patch Vuln, Rate Limit, Backup Restore
-  - **Utility**: sudo, Overclock, npm audit, git blame
-- **Type effectiveness** — Water > Fire > Ice > Water, Electric > Water, Shadow > Glitch, etc.
-- **Online multiplayer** — WebSocket relay, no IPs needed, just share a room code
-- **Leveling system** — XP on win/loss, stat boosts, skill unlocks at milestones
-- **Repo stakes** — Bet private repos on battles. Repos are rated **Common → Uncommon → Rare → Epic → Mythic** based on stars, CI, tests, contributors, and activity via the GitHub API
-- **Claude Code native** — Works as a `/buddy-clash` slash command, no TTY required
+  ┌─ YOUR BUDDY ───────────────────────────────┐
+  │ Marblisk Lv.4 (WATER)
+  │ HP: ████████░░░░░░░░░░░░ 52/129
+  │ ATK:17 DEF:12 SPD:10
+  │     ___
+  │    /o o\
+  │   ( =^= )
+  │   /|||||\
+  └────────────────────────────────────────────┘
 
-## Quick Start
+  Your moves:
+  1) ⚔ Ink Blast (water) PWR:20
+  2) ⚔ DDoS Wave (electric) PWR:15
+  3) 🛡 Sandbox — immune to next attack
+  4) 🛡 Patch Vuln — restore 20 HP
+```
 
+## How to play
+
+**Solo** — fight bots, earn XP, level up:
 ```bash
-# Interactive mode (real terminal)
 npx buddy-clash
-
-# Solo practice (works in Claude Code)
-node src/auto-battle.js --pick octopus Marblisk ink_blast,sql_inject,sandbox,patch_vuln --auto
-
-# Online multiplayer
-node src/online-battle.js host --stake Moonwolf711/my-repo
-node src/online-battle.js join A1B2C3 --stake friend/their-repo
-
-# Evaluate a repo's rarity
-node src/online-battle.js evaluate facebook/react
+# Pick "Practice (fight a bot)"
 ```
 
-## Type Chart
+**Online** — battle a friend:
+```bash
+# Player 1:
+npx buddy-clash
+# Pick "Host a battle" → get a room code like A1B2C3
 
-| Type | Strong vs | Weak vs |
-|------|-----------|---------|
-| Water | Fire | Electric, Glitch, Ice |
-| Fire | Ice, Glitch | Water |
-| Electric | Water, Shadow | Glitch |
-| Shadow | Glitch, Ice | Fire, Electric |
-| Glitch | Electric, Water | Shadow, Fire |
-| Ice | Water | Fire, Shadow |
-
-## Repo Rarity Tiers
-
-| Tier | Score | What qualifies |
-|------|-------|---------------|
-| ⬜ Common | 0-14 | Empty/abandoned, no README |
-| 🟩 Uncommon | 15-34 | Active project, basic structure |
-| 🟦 Rare | 35-59 | Tests + CI, multiple contributors |
-| 🟪 Epic | 60-84 | 200+ stars, Docker, deployed |
-| 🟨 Mythic | 85+ | 1000+ stars, org-level, full infra |
-
-## Stake Modes
-
-| Mode | Access level | Command |
-|------|-------------|---------|
-| `--mode collaborator` | Read (pull) | Default — "show me your code" |
-| `--mode partner` | Write (push) | "Let's work together" |
-| `--mode zip` | Snapshot | "Send me a copy" |
-
-## Architecture
-
-```
-src/
-├── buddies.js        # 6 species, type chart, base stats
-├── skills.js         # 20+ skills (inject/defend/utility)
-├── battle.js         # Turn resolution, damage calc, effects
-├── leveling.js       # XP curve, stat boosts, skill unlocks
-├── save.js           # Persistent progress (~/.buddy-battle/)
-├── repo-rarity.js    # GitHub API repo evaluation
-├── relay-server.js   # WebSocket relay (Railway)
-├── online-battle.js  # Non-interactive multiplayer
-├── auto-battle.js    # Claude Code compatible
-├── ui.js             # ASCII art, health bars, rendering
-├── client.js         # Interactive terminal client
-├── server.js         # Direct P2P server
-└── index.js          # Main entry / interactive menu
+# Player 2:
+npx buddy-clash
+# Pick "Join a battle" → enter the room code
 ```
 
-## Claude Code Integration
+That's it. No accounts, no setup.
 
-Add as a slash command — see `.claude/commands/buddy-battle.md` for the skill definition.
+## The stakes
+
+Before a battle, each player can **stake a GitHub repo**. The game evaluates your repo's rarity:
+
+| | Tier | What it means |
+|-|------|--------------|
+| ⬜ | Common | Empty repo, no README |
+| 🟩 | Uncommon | Active project, some structure |
+| 🟦 | Rare | Has tests, CI, multiple contributors |
+| 🟪 | Epic | 200+ stars, Docker, deployed |
+| 🟨 | Mythic | 1000+ stars, full infra |
+
+**Loser** adds the winner as a collaborator on their staked repo. Or they become partners and build something together.
+
+## Buddies
+
+| Buddy | Type | Style |
+|-------|------|-------|
+| 🐙 Octopus | Water | Tanky, DOT damage |
+| 🦊 Fox | Fire | Fast, high attack |
+| 🦉 Owl | Shadow | Debuffs, vision |
+| 🐉 Dragon | Electric | Slow but devastating |
+| 🐱 Cat | Glitch | Unpredictable, tricky |
+| 🐧 Penguin | Ice | Defensive wall |
+
+## Skills
+
+20+ dev-themed skills in 3 categories:
+
+**Attack:** SQL Inject, Fork Bomb, rm -rf /, XSS Strike, DDoS Wave, Buffer Overflow, Ice Shard, Phishing Lure
+
+**Defend:** Firewall, Encrypt, Sandbox, Patch Vuln, Rate Limit, Backup Restore
+
+**Utility:** sudo, Overclock, npm audit, git blame
+
+Each buddy has a pool of 8 skills — you pick 4 for battle.
+
+## Leveling
+
+- Win or lose, you earn XP
+- Level up = stat boosts + new skills
+- Your progress saves between sessions
+- Max level: 20
+
+## Type chart
+
+Water beats Fire. Fire beats Ice. Electric beats Water. You get the idea.
 
 ```
-/buddy-battle              # Solo practice
-/buddy-battle --host       # Host online room
-/buddy-battle --join CODE  # Join room
-/buddy-battle --evaluate owner/repo  # Check rarity
+Water → Fire → Ice → Water
+Electric → Water    Shadow → Glitch → Electric
 ```
 
-## Links
+## Built with Claude Code
 
-- **npm:** https://www.npmjs.com/package/buddy-clash
-- **Feature request:** https://github.com/anthropics/claude-code/issues/43155
+This entire game — battle engine, multiplayer relay, leveling system, repo rarity evaluator — was built in a single Claude Code session. It works as a `/buddy-clash` slash command inside Claude Code too.
+
+**npm:** https://www.npmjs.com/package/buddy-clash
+**GitHub:** https://github.com/Moonwolf711/buddy-battle
 
 ## License
 
