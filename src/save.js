@@ -3,7 +3,15 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+const { BUDDY_TYPES } = require('./buddies');
+
 const SAVE_DIR = path.join(os.homedir(), '.buddy-battle');
+
+// Quick lookup for base HP by species
+const BUDDY_TYPES_HP = {};
+for (const [key, val] of Object.entries(BUDDY_TYPES)) {
+  BUDDY_TYPES_HP[key] = val.baseStats.hp;
+}
 const SAVE_FILE = path.join(SAVE_DIR, 'save.json');
 
 function ensureSaveDir() {
@@ -41,12 +49,18 @@ function saveBuddyProgress(buddy, won) {
     record.losses++;
   }
 
+  // Always save max HP, not battle-depleted HP
+  const baseHp = BUDDY_TYPES_HP[buddy.species] || 120;
+  const levelHpBonus = ((buddy.level || 1) - 1) * 2; // rough estimate of HP gained from levels
+  const savedStats = { ...buddy.stats };
+  savedStats.hp = Math.max(savedStats.hp, baseHp + levelHpBonus);
+
   const saveData = {
     species: buddy.species,
     nickname: buddy.nickname,
     level: buddy.level || 1,
     xp: buddy.xp || 0,
-    stats: { ...buddy.stats },
+    stats: savedStats,
     unlockedSkills: (buddy.unlockedSkills || []).map(s => typeof s === 'string' ? s : s.id),
     record,
     lastPlayed: new Date().toISOString(),
