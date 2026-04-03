@@ -211,7 +211,8 @@ async function runOnlineBattle(isHost, roomCode) {
     }
 
     ws.on('message', (raw) => {
-      const msg = JSON.parse(raw.toString());
+      let msg;
+      try { msg = JSON.parse(raw.toString()); } catch { return; }
 
       switch (msg.type) {
         case 'room_created':

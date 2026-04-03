@@ -25,7 +25,7 @@ class BattleClient {
       this.ws = new WebSocket(`ws://${host}:${port}`);
       this.ws.on('open', () => resolve());
       this.ws.on('error', (err) => reject(err));
-      this.ws.on('message', (raw) => this.handleMessage(JSON.parse(raw.toString())));
+      this.ws.on('message', (raw) => { try { this.handleMessage(JSON.parse(raw.toString())); } catch {} });
       this.ws.on('close', () => {
         console.log(chalk.red('\n  Connection lost!'));
         process.exit(1);

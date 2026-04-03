@@ -145,9 +145,6 @@ async function run() {
 
   // No skills given — show pool
   if (!skillIds && !autoPlay) {
-    if (save && save.species === species) {
-      // Use saved skills if available, otherwise show pool
-    }
     printSkillPool(species);
     return;
   }
@@ -231,7 +228,7 @@ async function run() {
       return;
     }
 
-    const botSkill = smartMoveAI(botBuddy, botBuddy.skills, { type: buddy.type }, turnCount);
+    const botSkill = smartMoveAI(botBuddy, botBuddy.skills, { type: buddy.type }, 1);
     const result = battle.resolveTurn(
       { skillId: skill.id, skill },
       { skillId: botSkill.id, skill: botSkill }

@@ -220,7 +220,7 @@ function handleMessage(ws, msg) {
       if (!player) return;
 
       player.ready = true;
-      player.buddy = msg.buddy; // Updated buddy with skills
+      player.buddy = sanitizeBuddyData(msg.buddy) || player.buddy;
 
       if (room.players.every(p => p.ready)) {
         room.status = 'battling';
