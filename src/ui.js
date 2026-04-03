@@ -53,7 +53,8 @@ function renderBattleScreen(state) {
   const enemyType = typeColor(state.enemy.type);
   const enemyArt = renderBuddy(state.enemy.species, 'right');
   lines.push(chalk.gray('  ┌─ OPPONENT ─────────────────────────────────┐'));
-  lines.push(`  │ ${enemyType(state.enemy.buddy)} ${chalk.gray('(' + state.enemy.type.toUpperCase() + ')')}  ${chalk.dim('— ' + state.enemy.name)}`);
+  const enemyLvl = state.enemy.level ? chalk.gray(` Lv.${state.enemy.level}`) : '';
+  lines.push(`  │ ${enemyType(state.enemy.buddy)}${enemyLvl} ${chalk.gray('(' + state.enemy.type.toUpperCase() + ')')}  ${chalk.dim('— ' + state.enemy.name)}`);
   lines.push(`  │ HP: ${healthBar(state.enemy.hp, state.enemy.maxHp)}`);
   for (const line of enemyArt) {
     lines.push(`  │ ${chalk.dim(line)}`);
@@ -68,7 +69,8 @@ function renderBattleScreen(state) {
   const yourType = typeColor(state.you.type);
   const yourArt = renderBuddy(state.you.species, 'left');
   lines.push(chalk.gray('  ┌─ YOUR BUDDY ───────────────────────────────┐'));
-  lines.push(`  │ ${yourType.bold(state.you.buddy)} ${chalk.gray('(' + state.you.type.toUpperCase() + ')')}  ${chalk.dim('— ' + state.you.name)}`);
+  const yourLvl = state.you.level ? chalk.gray(` Lv.${state.you.level}`) : '';
+  lines.push(`  │ ${yourType.bold(state.you.buddy)}${yourLvl} ${chalk.gray('(' + state.you.type.toUpperCase() + ')')}  ${chalk.dim('— ' + state.you.name)}`);
   lines.push(`  │ HP: ${healthBar(state.you.hp, state.you.maxHp)}`);
   lines.push(`  │ ATK:${chalk.red(state.you.atk)} DEF:${chalk.blue(state.you.def)} SPD:${chalk.yellow(state.you.spd)}`);
   for (const line of yourArt) {
@@ -146,4 +148,42 @@ ${chalk.yellow('  ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ �
 `;
 }
 
-module.exports = { renderBattleScreen, renderSkillMenu, renderTitle, renderVictory, healthBar, typeColor };
+function xpBar(currentXp, neededXp, level, maxLevel, width = 20) {
+  if (level >= maxLevel) {
+    return chalk.yellow('★'.repeat(width)) + chalk.bold.yellow(' MAX');
+  }
+  const ratio = neededXp > 0 ? Math.min(1, currentXp / neededXp) : 0;
+  const filled = Math.round(ratio * width);
+  const empty = width - filled;
+  const bar = chalk.cyan('▓'.repeat(filled)) + chalk.gray('░'.repeat(empty));
+  return `${bar} ${currentXp}/${neededXp} XP`;
+}
+
+function renderXpGain(xpGained, levelUps, newLevel, newXp, neededXp, maxLevel) {
+  const lines = [];
+  lines.push('');
+  lines.push(chalk.gray('  ┌─ XP RESULTS ────────────────────────────────┐'));
+  lines.push(`  │  ${chalk.cyan('+')}${chalk.bold.cyan(xpGained + ' XP')} earned!`);
+
+  for (const lu of levelUps) {
+    lines.push(`  │`);
+    lines.push(`  │  ${chalk.bold.yellow('★ LEVEL UP! → Lv.' + lu.level)}`);
+    const statName = lu.statBoosted.toUpperCase();
+    const amount = lu.amount;
+    lines.push(`  │  ${chalk.green('+' + amount + ' ' + statName)}`);
+    if (lu.milestoneStat) {
+      lines.push(`  │  ${chalk.green('+1 ' + lu.milestoneStat.toUpperCase())} (milestone)`);
+    }
+    if (lu.newSkill) {
+      lines.push(`  │  ${chalk.magenta('NEW SKILL: ' + lu.newSkill.name + '!')}`);
+    }
+  }
+
+  lines.push(`  │`);
+  lines.push(`  │  Lv.${newLevel}  ${xpBar(newXp, neededXp, newLevel, maxLevel)}`);
+  lines.push(chalk.gray('  └────────────────────────────────────────────┘'));
+  lines.push('');
+  return lines.join('\n');
+}
+
+module.exports = { renderBattleScreen, renderSkillMenu, renderTitle, renderVictory, healthBar, typeColor, xpBar, renderXpGain };

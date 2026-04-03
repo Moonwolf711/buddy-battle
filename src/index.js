@@ -5,7 +5,9 @@ const chalk = require('chalk');
 const ora = require('ora');
 const { BattleServer } = require('./server');
 const { BattleClient } = require('./client');
-const { renderTitle } = require('./ui');
+const { renderTitle, renderXpGain } = require('./ui');
+const { loadSave, saveBuddyProgress } = require('./save');
+const { awardXP, xpForLevel, MAX_LEVEL } = require('./leveling');
 
 const DEFAULT_PORT = 9877;
 
@@ -83,6 +85,7 @@ async function hostGame(portArg) {
       species: buddy.species,
       nickname: buddy.nickname,
       type: buddy.type,
+      level: buddy.level || 1,
       stats: { ...buddy.stats },
     },
   });
@@ -135,6 +138,7 @@ async function joinGame(hostArg, portArg) {
         species: buddy.species,
         nickname: buddy.nickname,
         type: buddy.type,
+        level: buddy.level || 1,
         stats: { ...buddy.stats },
       },
     });
@@ -181,16 +185,17 @@ async function practiceMode() {
 
   const player = {
     name: client.playerName,
-    buddy: { ...buddy, maxHp: buddy.stats.hp },
+    buddy: { ...buddy, maxHp: buddy.stats.hp, level: buddy.level || 1 },
   };
+  const botLevel = Math.max(1, (buddy.level || 1) + Math.floor(Math.random() * 3) - 1);
   const bot = {
     name: 'CPU',
-    buddy: { ...botBuddy, maxHp: botBuddy.stats.hp },
+    buddy: { ...botBuddy, maxHp: botBuddy.stats.hp, level: botLevel },
   };
 
   const battle = new BattleEngine(player, bot);
 
-  console.log(chalk.yellow(`\n  ⚔  VS ${BUDDY_TYPES[botSpecies].emoji} ${botBuddy.nickname}!\n`));
+  console.log(chalk.yellow(`\n  ⚔  VS ${BUDDY_TYPES[botSpecies].emoji} ${botBuddy.nickname} Lv.${botLevel}!\n`));
 
   while (!battle.winner && battle.winner !== 0) {
     const state = battle.getState(0);
@@ -226,11 +231,27 @@ async function practiceMode() {
     if (result.winner !== null && result.winner !== undefined) {
       const finalState = battle.getState(0);
       console.log(renderBattleScreen(finalState));
-      if (result.winner === 0) {
+      const won = result.winner === 0;
+      if (won) {
         console.log(chalk.bold.green('\n  🏆 You defeated the wild buddy!\n'));
       } else {
         console.log(chalk.bold.red('\n  💀 Your buddy fainted!\n'));
       }
+
+      // Award XP and save
+      const xpResult = awardXP(buddy, won, botLevel);
+      buddy.level = xpResult.newLevel;
+      buddy.xp = xpResult.newXp;
+      buddy.stats = xpResult.newStats;
+      if (xpResult.newSkill) {
+        if (!buddy.unlockedSkills) buddy.unlockedSkills = [];
+        buddy.unlockedSkills.push(xpResult.newSkill.id);
+      }
+
+      const neededXp = xpResult.newLevel < MAX_LEVEL ? xpForLevel(xpResult.newLevel + 1) : 0;
+      console.log(renderXpGain(xpResult.xpGained, xpResult.levelUps, xpResult.newLevel, xpResult.newXp, neededXp, MAX_LEVEL));
+
+      saveBuddyProgress(buddy, won);
       break;
     }
   }

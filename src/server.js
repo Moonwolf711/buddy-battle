@@ -160,6 +160,7 @@ class BattleServer {
       buddy: {
         ...room.players[0].buddy,
         maxHp: room.players[0].buddy.stats.hp,
+        level: room.players[0].buddy.level || 1,
       },
     };
     const p2 = {
@@ -167,6 +168,7 @@ class BattleServer {
       buddy: {
         ...room.players[1].buddy,
         maxHp: room.players[1].buddy.stats.hp,
+        level: room.players[1].buddy.level || 1,
       },
     };
 

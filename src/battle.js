@@ -24,6 +24,7 @@ class BattleEngine {
         buddy: me.buddy.nickname || me.buddy.species,
         species: me.buddy.species,
         type: me.buddy.type,
+        level: me.buddy.level || 1,
         hp: me.buddy.stats.hp,
         maxHp: me.buddy.maxHp,
         atk: me.buddy.stats.atk,
@@ -37,6 +38,7 @@ class BattleEngine {
         buddy: them.buddy.nickname || them.buddy.species,
         species: them.buddy.species,
         type: them.buddy.type,
+        level: them.buddy.level || 1,
         hp: them.buddy.stats.hp,
         maxHp: them.buddy.maxHp,
         // Don't reveal exact stats unless npm_audit was used
@@ -116,7 +118,11 @@ class BattleEngine {
           const atkStat = Math.max(1, atkBuddy.stats.atk);
           const defStat = Math.max(1, defBuddy.stats.def);
           const variance = 0.85 + Math.random() * 0.15;
-          const damage = Math.floor(skill.power * (atkStat / defStat) * effectiveness * stab * variance);
+          // Level advantage: each level difference gives ~2% bonus/penalty
+          const atkLevel = atkBuddy.level || 1;
+          const defLevel = defBuddy.level || 1;
+          const levelBonus = 1 + (atkLevel - defLevel) * 0.02;
+          const damage = Math.floor(skill.power * (atkStat / defStat) * effectiveness * stab * variance * Math.max(0.5, levelBonus));
 
           defBuddy.stats.hp = Math.max(0, defBuddy.stats.hp - damage);
 

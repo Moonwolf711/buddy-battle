@@ -5,7 +5,9 @@ const chalk = require('chalk');
 const ora = require('ora');
 const { BUDDY_TYPES } = require('./buddies');
 const { getSkillPool, getSkill } = require('./skills');
-const { renderBattleScreen, renderSkillMenu, renderTitle, renderVictory } = require('./ui');
+const { renderBattleScreen, renderSkillMenu, renderTitle, renderVictory, renderXpGain } = require('./ui');
+const { awardXP, xpForLevel, MAX_LEVEL } = require('./leveling');
+const { loadSave, saveBuddyProgress } = require('./save');
 
 class BattleClient {
   constructor() {
@@ -84,6 +86,29 @@ class BattleClient {
       case 'battle_end':
         if (this.spinner) this.spinner.stop();
         console.log(renderVictory(msg.winner, msg.loser));
+
+        // Award XP and process level ups
+        {
+          const enemyLevel = this.state?.enemy?.level || 1;
+          const result = awardXP(this.buddy, msg.youWon, enemyLevel);
+
+          // Apply results to buddy
+          this.buddy.level = result.newLevel;
+          this.buddy.xp = result.newXp;
+          this.buddy.stats = result.newStats;
+          if (result.newSkill) {
+            if (!this.buddy.unlockedSkills) this.buddy.unlockedSkills = [];
+            this.buddy.unlockedSkills.push(result.newSkill.id);
+          }
+
+          // Show XP results
+          const neededXp = result.newLevel < MAX_LEVEL ? xpForLevel(result.newLevel + 1) : 0;
+          console.log(renderXpGain(result.xpGained, result.levelUps, result.newLevel, result.newXp, neededXp, MAX_LEVEL));
+
+          // Save progress
+          saveBuddyProgress(this.buddy, msg.youWon);
+        }
+
         if (msg.youWon) {
           console.log(chalk.green.bold('  🏆 You won! Your opponent owes you a repo!\n'));
           await this.claimRepo();
@@ -109,6 +134,44 @@ class BattleClient {
 
   async setupBuddy() {
     console.log(renderTitle());
+
+    // Check for existing save
+    const save = loadSave();
+    if (save && save.species && save.nickname) {
+      const record = save.record || { wins: 0, losses: 0 };
+      console.log(chalk.gray(`  Saved buddy found: ${chalk.bold.white(save.nickname)} (${BUDDY_TYPES[save.species]?.name || save.species}) Lv.${save.level || 1}  W:${record.wins} L:${record.losses}`));
+      const { useSave } = await inquirer.prompt([{
+        type: 'list',
+        name: 'useSave',
+        message: `Continue with ${save.nickname} (Lv.${save.level || 1})?`,
+        choices: [
+          { name: `Continue with ${save.nickname}`, value: true },
+          { name: 'New buddy (overwrites save)', value: false },
+        ],
+      }]);
+
+      if (useSave) {
+        const { name } = await inquirer.prompt([{
+          type: 'input',
+          name: 'name',
+          message: 'Your trainer name:',
+          default: process.env.USER || 'Player',
+        }]);
+        this.playerName = name;
+
+        this.buddy = {
+          species: save.species,
+          nickname: save.nickname,
+          type: BUDDY_TYPES[save.species]?.type || 'water',
+          stats: { ...save.stats },
+          level: save.level || 1,
+          xp: save.xp || 0,
+          unlockedSkills: save.unlockedSkills || [],
+          skills: [],
+        };
+        return this.buddy;
+      }
+    }
 
     const { name } = await inquirer.prompt([{
       type: 'input',
@@ -144,6 +207,9 @@ class BattleClient {
       nickname,
       type: BUDDY_TYPES[species].type,
       stats: { ...BUDDY_TYPES[species].baseStats },
+      level: 1,
+      xp: 0,
+      unlockedSkills: [],
       skills: [],
     };
 
