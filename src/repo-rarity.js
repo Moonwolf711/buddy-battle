@@ -10,6 +10,21 @@ const RARITY = {
   MYTHIC:   { name: 'Mythic',   color: chalk.yellow,  emoji: '🟨', tier: 5, min: 85 },
 };
 
+// Strict validation: owner/repo must be alphanumeric, hyphens, underscores, dots only
+const REPO_NAME_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
+
+function validateRepoName(name) {
+  if (!name || typeof name !== 'string') return false;
+  if (name.length > 200) return false;
+  return REPO_NAME_RE.test(name);
+}
+
+function validateGitHubUsername(name) {
+  if (!name || typeof name !== 'string') return false;
+  if (name.length > 100) return false;
+  return /^[a-zA-Z0-9._-]+$/.test(name);
+}
+
 function gh(cmd) {
   try {
     // Use full path or rely on shell to find gh
@@ -22,6 +37,10 @@ function gh(cmd) {
 
 function evaluateRepo(repoFullName) {
   // repoFullName: "owner/repo"
+  if (!validateRepoName(repoFullName)) {
+    return { rarity: RARITY.COMMON, score: 0, error: 'Invalid repo name. Must be owner/repo (alphanumeric, hyphens, dots, underscores only).' };
+  }
+
   const score = { total: 0, breakdown: {}, details: {} };
 
   // 1. Basic repo info
@@ -196,6 +215,9 @@ function renderRarityComparison(stake1, eval1, stake2, eval2) {
 
 // Stake a repo — adds collaborator invite or provides zip instructions
 function getStakeCommands(repoFullName, winnerGithub, mode) {
+  if (!validateRepoName(repoFullName) || !validateGitHubUsername(winnerGithub)) {
+    return { description: 'Invalid repo or username', command: '# ERROR: invalid input — refusing to generate command', undo: null };
+  }
   if (mode === 'collaborator') {
     return {
       description: `Add ${winnerGithub} as collaborator to ${repoFullName}`,
@@ -261,4 +283,6 @@ module.exports = {
   renderRarityComparison,
   renderStakeResult,
   getStakeCommands,
+  validateRepoName,
+  validateGitHubUsername,
 };

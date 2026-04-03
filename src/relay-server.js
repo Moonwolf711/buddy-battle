@@ -26,7 +26,8 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 function generateCode() {
-  return crypto.randomBytes(3).toString('hex').toUpperCase();
+  // 4 bytes = 8 hex chars = ~4.3 billion possibilities
+  return crypto.randomBytes(4).toString('hex').toUpperCase();
 }
 
 // HTTP server for health checks + room list
@@ -37,16 +38,16 @@ const httpServer = http.createServer((req, res) => {
   if (req.url === '/health') {
     res.end(JSON.stringify({ status: 'ok', rooms: rooms.size, uptime: process.uptime() }));
   } else if (req.url === '/rooms') {
+    // Only show room count and status — never expose room codes publicly
+    // Room codes should only be shared out-of-band between players
     const roomList = [];
     for (const [code, room] of rooms) {
       roomList.push({
-        code,
         players: room.players.length,
         status: room.status,
-        createdAt: room.createdAt,
       });
     }
-    res.end(JSON.stringify({ rooms: roomList }));
+    res.end(JSON.stringify({ count: roomList.length, rooms: roomList }));
   } else {
     res.end(JSON.stringify({
       name: 'buddy-battle-relay',
@@ -56,14 +57,32 @@ const httpServer = http.createServer((req, res) => {
   }
 });
 
-// WebSocket server
-const wss = new WebSocket.Server({ server: httpServer });
+// WebSocket server — limit payload to 16KB to prevent memory exhaustion
+const wss = new WebSocket.Server({ server: httpServer, maxPayload: 16 * 1024 });
+
+// Rate limiting: max 20 messages per 5 seconds per connection
+const RATE_WINDOW = 5000;
+const RATE_MAX = 20;
 
 wss.on('connection', (ws) => {
   ws.isAlive = true;
+  ws._msgCount = 0;
+  ws._msgWindowStart = Date.now();
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', (raw) => {
+    // Rate limiting
+    const now = Date.now();
+    if (now - ws._msgWindowStart > RATE_WINDOW) {
+      ws._msgCount = 0;
+      ws._msgWindowStart = now;
+    }
+    ws._msgCount++;
+    if (ws._msgCount > RATE_MAX) {
+      send(ws, { type: 'error', message: 'Rate limited. Slow down.' });
+      return;
+    }
+
     try {
       const msg = JSON.parse(raw.toString());
       handleMessage(ws, msg);
@@ -98,12 +117,57 @@ function broadcast(room, msg, exclude = null) {
   }
 }
 
+// Limit rooms per IP/connection to prevent room flooding
+const MAX_ROOMS_TOTAL = 100;
+
+// Basic input sanitization: ensure string fields are strings, truncate length
+function sanitizeString(val, maxLen = 50) {
+  if (typeof val !== 'string') return '';
+  return val.slice(0, maxLen).replace(/[^\x20-\x7E]/g, '');
+}
+
+// Validate buddy stats are reasonable numbers
+function sanitizeBuddyData(buddy) {
+  if (!buddy || typeof buddy !== 'object') return null;
+  return {
+    species: sanitizeString(buddy.species, 30),
+    nickname: sanitizeString(buddy.nickname, 30),
+    type: sanitizeString(buddy.type, 20),
+    level: Math.max(1, Math.min(20, parseInt(buddy.level) || 1)),
+    stats: {
+      hp: Math.max(1, Math.min(500, parseInt(buddy.stats?.hp) || 100)),
+      atk: Math.max(1, Math.min(100, parseInt(buddy.stats?.atk) || 10)),
+      def: Math.max(1, Math.min(100, parseInt(buddy.stats?.def) || 10)),
+      spd: Math.max(1, Math.min(100, parseInt(buddy.stats?.spd) || 10)),
+    },
+    skills: Array.isArray(buddy.skills) ? buddy.skills.slice(0, 4) : [],
+  };
+}
+
 function handleMessage(ws, msg) {
+  // Validate msg.type is a known type
+  const VALID_TYPES = ['create_room', 'join_room', 'ready', 'move', 'battle_result', 'chat'];
+  if (!msg || typeof msg.type !== 'string' || !VALID_TYPES.includes(msg.type)) {
+    send(ws, { type: 'error', message: 'Unknown message type' });
+    return;
+  }
+
   switch (msg.type) {
     case 'create_room': {
+      // Prevent room flooding
+      if (rooms.size >= MAX_ROOMS_TOTAL) {
+        send(ws, { type: 'error', message: 'Server is full. Try again later.' });
+        return;
+      }
+      // Prevent one client from creating multiple rooms
+      if (ws._roomCode) {
+        send(ws, { type: 'error', message: 'You already have a room.' });
+        return;
+      }
       const code = generateCode();
+      const name = sanitizeString(msg.name, 30) || 'Player';
       rooms.set(code, {
-        players: [{ ws, name: msg.name, buddy: msg.buddy, stake: msg.stake || null, ready: false, move: null }],
+        players: [{ ws, name, buddy: sanitizeBuddyData(msg.buddy), stake: msg.stake || null, ready: false, move: null }],
         status: 'waiting',
         createdAt: Date.now(),
         battleState: null,
@@ -112,7 +176,7 @@ function handleMessage(ws, msg) {
       ws._roomCode = code;
       ws._playerIndex = 0;
       send(ws, { type: 'room_created', code });
-      console.log(`Room ${code} created by ${msg.name}`);
+      console.log(`Room ${code} created by ${name}`);
       break;
     }
 
@@ -128,7 +192,8 @@ function handleMessage(ws, msg) {
         return;
       }
 
-      room.players.push({ ws, name: msg.name, buddy: msg.buddy, stake: msg.stake || null, ready: false, move: null });
+      const joinName = sanitizeString(msg.name, 30) || 'Player';
+      room.players.push({ ws, name: joinName, buddy: sanitizeBuddyData(msg.buddy), stake: msg.stake || null, ready: false, move: null });
       ws._roomCode = code;
       ws._playerIndex = 1;
       room.status = 'matched';
@@ -207,15 +272,21 @@ function handleMessage(ws, msg) {
     case 'battle_result': {
       const room = rooms.get(ws._roomCode);
       if (!room) return;
-      // Player reports final result
+      // Only allow battle_result once per room, and only during battling
+      if (room.status !== 'battling') return;
+      room.status = 'finished';
+      // Sanitize winner/loser names — relay only, don't trust winner index from client
+      // NOTE: The relay is stateless (no game logic), so both clients resolve
+      // the battle locally. This message is informational only.
+      const sanitizedWinner = sanitizeString(msg.winner, 30);
+      const sanitizedLoser = sanitizeString(msg.loser, 30);
       broadcast(room, {
         type: 'battle_end',
-        winner: msg.winner,
-        loser: msg.loser,
-        winnerIndex: msg.winnerIndex,
+        winner: sanitizedWinner,
+        loser: sanitizedLoser,
+        winnerIndex: typeof msg.winnerIndex === 'number' ? (msg.winnerIndex === 0 ? 0 : 1) : 0,
       });
-      room.status = 'finished';
-      console.log(`Room ${ws._roomCode}: Battle ended. ${msg.winner} wins!`);
+      console.log(`Room ${ws._roomCode}: Battle ended. ${sanitizedWinner} wins!`);
       break;
     }
 
