@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm install
+      - name: Verify game engine loads
+        run: |
+          node -e "
+            const { BUDDY_TYPES } = require('./src/buddies');
+            const { getSkillPool } = require('./src/skills');
+            const { BattleEngine } = require('./src/battle');
+            const { awardXP } = require('./src/leveling');
+            console.log('Buddies:', Object.keys(BUDDY_TYPES).length);
+            console.log('Skills per buddy:', getSkillPool('octopus').length);
+            const p1 = { name: 'A', buddy: { species: 'octopus', nickname: 'Test', type: 'water', level: 1, stats: { hp: 120, atk: 14, def: 12, spd: 10 }, maxHp: 120, skills: [{ id: 'ink_blast', name: 'Ink Blast', type: 'water', power: 20, accuracy: 100, category: 'inject' }] }};
+            const p2 = { name: 'B', buddy: { species: 'fox', nickname: 'Bot', type: 'fire', level: 1, stats: { hp: 100, atk: 16, def: 8, spd: 16 }, maxHp: 100, skills: [{ id: 'flame_patch', name: 'Flame Patch', type: 'fire', power: 28, accuracy: 90, category: 'inject' }] }};
+            const b = new BattleEngine(p1, p2);
+            const r = b.resolveTurn({ skillId: 'ink_blast', skill: p1.buddy.skills[0] }, { skillId: 'flame_patch', skill: p2.buddy.skills[0] });
+            console.log('Battle turn resolved:', r.messages.length, 'messages');
+            const xp = awardXP({ level: 1, xp: 0, stats: { hp: 120, atk: 14, def: 12, spd: 10 } }, true, 1);
+            console.log('XP system:', xp.xpGained, 'XP earned');
+            console.log('All systems OK');
+          "
+      - name: Verify repo rarity validation
+        run: |
+          node -e "
+            const { validateRepoName } = require('./src/repo-rarity');
+            const safe = ['owner/repo', 'Moonwolf711/buddy-battle', 'a/b'];
+            const bad = ['owner/repo; rm -rf /', '../etc/passwd', '', 'no-slash'];
+            for (const s of safe) { if (!validateRepoName(s)) throw new Error('Should be valid: ' + s); }
+            for (const b of bad) { if (validateRepoName(b)) throw new Error('Should be invalid: ' + b); }
+            console.log('Input validation: all checks passed');
+          "

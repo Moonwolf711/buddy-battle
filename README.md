@@ -1,5 +1,9 @@
 # buddy-clash
 
+[![CI](https://github.com/Moonwolf711/buddy-battle/actions/workflows/ci.yml/badge.svg)](https://github.com/Moonwolf711/buddy-battle/actions)
+[![npm](https://img.shields.io/npm/v/buddy-clash)](https://www.npmjs.com/package/buddy-clash)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 > Pick a buddy. Learn skills. Battle your friends. **Loser shares a private repo.**
 
 ```bash
