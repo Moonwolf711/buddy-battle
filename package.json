@@ -1,11 +1,34 @@
 {
-  "name": "buddy-battle",
-  "version": "0.1.0",
-  "description": "Battle your Claude Code buddy against friends. Stakes: private GitHub repos.",
+  "name": "buddy-clash",
+  "version": "1.0.1",
+  "description": "Battle your Claude Code buddy against friends. Stake GitHub repos. Turn-based CLI combat with 6 creatures, 20+ skills, type effectiveness, and online multiplayer.",
   "main": "src/index.js",
   "bin": {
-    "buddy-battle": "./src/index.js"
+    "buddy-clash": "src/index.js",
+    "buddy-battle": "src/index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moonwolf711/buddy-battle.git"
+  },
+  "author": "Moonwolf711",
+  "keywords": [
+    "cli",
+    "battle",
+    "game",
+    "claude-code",
+    "multiplayer",
+    "pokemon",
+    "terminal",
+    "buddy",
+    "pvp",
+    "repo-stakes"
+  ],
+  "license": "MIT",
+  "files": [
+    "src/",
+    "package.json"
+  ],
   "scripts": {
     "start": "node src/relay-server.js",
     "game": "node src/index.js",
@@ -15,8 +38,6 @@
     "host": "node src/online-battle.js host",
     "join": "node src/online-battle.js join"
   },
-  "keywords": ["cli", "battle", "game", "claude-code", "multiplayer"],
-  "license": "MIT",
   "dependencies": {
     "ws": "^8.16.0",
     "chalk": "^4.1.2",
