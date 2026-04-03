@@ -1,0 +1,24 @@
+{
+  "name": "buddy-battle",
+  "version": "0.1.0",
+  "description": "Battle your Claude Code buddy against friends. Stakes: private GitHub repos.",
+  "main": "src/index.js",
+  "bin": {
+    "buddy-battle": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "host": "node src/index.js host",
+    "join": "node src/index.js join"
+  },
+  "keywords": ["cli", "battle", "game", "claude-code", "multiplayer"],
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.16.0",
+    "chalk": "^4.1.2",
+    "inquirer": "^8.2.6",
+    "figlet": "^1.7.0",
+    "boxen": "^5.1.2",
+    "ora": "^5.4.1"
+  }
+}
