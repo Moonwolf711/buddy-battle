@@ -7,9 +7,13 @@
     "buddy-battle": "./src/index.js"
   },
   "scripts": {
-    "start": "node src/index.js",
-    "host": "node src/index.js host",
-    "join": "node src/index.js join"
+    "start": "node src/relay-server.js",
+    "game": "node src/index.js",
+    "relay": "node src/relay-server.js",
+    "battle": "node src/auto-battle.js --auto",
+    "online": "node src/online-battle.js",
+    "host": "node src/online-battle.js host",
+    "join": "node src/online-battle.js join"
   },
   "keywords": ["cli", "battle", "game", "claude-code", "multiplayer"],
   "license": "MIT",
