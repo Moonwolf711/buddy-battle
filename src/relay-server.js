@@ -103,7 +103,7 @@ function handleMessage(ws, msg) {
     case 'create_room': {
       const code = generateCode();
       rooms.set(code, {
-        players: [{ ws, name: msg.name, buddy: msg.buddy, ready: false, move: null }],
+        players: [{ ws, name: msg.name, buddy: msg.buddy, stake: msg.stake || null, ready: false, move: null }],
         status: 'waiting',
         createdAt: Date.now(),
         battleState: null,
@@ -128,7 +128,7 @@ function handleMessage(ws, msg) {
         return;
       }
 
-      room.players.push({ ws, name: msg.name, buddy: msg.buddy, ready: false, move: null });
+      room.players.push({ ws, name: msg.name, buddy: msg.buddy, stake: msg.stake || null, ready: false, move: null });
       ws._roomCode = code;
       ws._playerIndex = 1;
       room.status = 'matched';
@@ -139,6 +139,7 @@ function handleMessage(ws, msg) {
       const playerInfo = room.players.map(p => ({
         name: p.name,
         buddy: p.buddy,
+        stake: p.stake,
       }));
       for (const p of room.players) {
         send(p.ws, { type: 'players_matched', players: playerInfo });
