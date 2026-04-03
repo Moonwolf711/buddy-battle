@@ -1,6 +1,6 @@
 {
   "name": "buddy-clash",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Battle your Claude Code buddy against friends. Stake GitHub repos. Turn-based CLI combat with 6 creatures, 20+ skills, type effectiveness, and online multiplayer.",
   "main": "src/index.js",
   "bin": {
@@ -27,7 +27,8 @@
   "license": "MIT",
   "files": [
     "src/",
-    "package.json"
+    "package.json",
+    "README.md"
   ],
   "scripts": {
     "start": "node src/relay-server.js",
