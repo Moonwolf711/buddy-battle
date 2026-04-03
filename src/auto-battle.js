@@ -61,21 +61,34 @@ function printSkillPool(buddySpecies) {
   console.log(chalk.gray(`\n  Pick 4 by ID: node auto-battle.js --pick ${buddySpecies} Name skill1,skill2,skill3,skill4`));
 }
 
-function smartMoveAI(buddy, skills, enemyState) {
-  // Simple AI: if low HP, try to heal. Otherwise pick best damage move
+function smartMoveAI(buddy, skills, enemyState, turnCount) {
   const hp = buddy.stats.hp;
   const maxHp = buddy.maxHp;
 
-  // If below 30% HP, look for heal
-  if (hp < maxHp * 0.3) {
+  // Turn 1: if enemy type is super effective against us, lead with Sandbox
+  if (turnCount <= 1) {
+    const enemyEff = getEffectiveness(enemyState.type, buddy.type);
+    if (enemyEff >= 2.0) {
+      const shield = skills.find(s => s.effect?.shield);
+      if (shield) return shield;
+    }
+  }
+
+  // If below 25% HP, try to heal
+  if (hp < maxHp * 0.25) {
     const healSkill = skills.find(s => s.effect?.heal);
     if (healSkill) return healSkill;
   }
 
-  // If below 50% HP and shield available
-  if (hp < maxHp * 0.5) {
-    const shield = skills.find(s => s.effect?.shield);
-    if (shield) return shield;
+  // If below 40% HP, heal if possible, but don't Sandbox-loop — alternate attacks
+  if (hp < maxHp * 0.4) {
+    const healSkill = skills.find(s => s.effect?.heal);
+    if (healSkill) return healSkill;
+    // Only shield if we DON'T already have one up (odd turns = attack)
+    if (turnCount % 2 === 0) {
+      const shield = skills.find(s => s.effect?.shield);
+      if (shield) return shield;
+    }
   }
 
   // Pick highest expected damage move, considering type effectiveness
@@ -218,7 +231,7 @@ async function run() {
       return;
     }
 
-    const botSkill = smartMoveAI(botBuddy, botBuddy.skills, { type: buddy.type });
+    const botSkill = smartMoveAI(botBuddy, botBuddy.skills, { type: buddy.type }, turnCount);
     const result = battle.resolveTurn(
       { skillId: skill.id, skill },
       { skillId: botSkill.id, skill: botSkill }
@@ -259,8 +272,8 @@ async function run() {
       const state = battle.getState(0);
 
       // AI picks move for player
-      const playerSkill = smartMoveAI(buddy, skills, { type: botBuddy.type });
-      const botSkill = smartMoveAI(botBuddy, botBuddy.skills, { type: buddy.type });
+      const playerSkill = smartMoveAI(buddy, skills, { type: botBuddy.type }, turnCount);
+      const botSkill = smartMoveAI(botBuddy, botBuddy.skills, { type: buddy.type }, turnCount);
 
       const result = battle.resolveTurn(
         { skillId: playerSkill.id, skill: playerSkill },

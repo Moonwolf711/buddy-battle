@@ -49,11 +49,15 @@ function saveBuddyProgress(buddy, won) {
     record.losses++;
   }
 
-  // Always save max HP, not battle-depleted HP
-  const baseHp = BUDDY_TYPES_HP[buddy.species] || 120;
-  const levelHpBonus = ((buddy.level || 1) - 1) * 2; // rough estimate of HP gained from levels
-  const savedStats = { ...buddy.stats };
-  savedStats.hp = Math.max(savedStats.hp, baseHp + levelHpBonus);
+  // NEVER save debuffed stats — always reset to base + level bonuses
+  const base = BUDDY_TYPES[buddy.species]?.baseStats || { hp: 120, atk: 14, def: 12, spd: 10 };
+  const lvl = buddy.level || 1;
+  const savedStats = {
+    hp: Math.max(buddy.stats.hp, base.hp + (lvl - 1) * 3),
+    atk: Math.max(buddy.stats.atk, base.atk),
+    def: Math.max(buddy.stats.def, base.def),
+    spd: Math.max(buddy.stats.spd, base.spd),
+  };
 
   const saveData = {
     species: buddy.species,
